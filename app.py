@@ -9,7 +9,7 @@ app = Flask(__name__)
 sp_oauth = SpotifyOAuth(
     client_id=os.getenv("SPOTIPY_CLIENT_ID"),
     client_secret=os.getenv("SPOTIPY_CLIENT_SECRET"),
-    redirect_uri="https://music-picker.onrender.com/callback",
+    redirect_uri=os.getenv("SPOTIPY_REDIRECT_URI"),  # usa variable de entorno
     scope="user-modify-playback-state"
 )
 
@@ -53,5 +53,7 @@ def play_music():
     sp.start_playback(uris=[uri])
     return f"Reproduciendo canción para BPM {bpm}"
 
+# Este bloque permite que Render escuche en el puerto asignado externamente
 if __name__ == "__main__":
-    app.run()
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)

@@ -10,9 +10,10 @@ app = Flask(__name__)
 sp_oauth = SpotifyOAuth(
     client_id=os.getenv("SPOTIPY_CLIENT_ID"),
     client_secret=os.getenv("SPOTIPY_CLIENT_SECRET"),
-    redirect_uri=os.getenv("SPOTIPY_REDIRECT_URI"),
+    redirect_uri="https://musicpicker-server.onrender.com/callback",  # ⚠️ Este es tu URL real con /callback
     scope="user-modify-playback-state"
 )
+
 
 # Guardar token para la sesión
 token_info = None

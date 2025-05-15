@@ -1,4 +1,4 @@
-from flask import Flask, request, redirect
+from flask import Flask, request, redirect, jsonify
 from spotipy import Spotify
 from spotipy.oauth2 import SpotifyOAuth
 import os

@@ -37,6 +37,31 @@ canciones_agitado = [
     "spotify:track:6DXk1aLxSk2K2fJUSFbP6G",  # Disaster - Conan Gray
 ]
 
+
+
+@app.route("/cancion")
+def cancion():
+    global token_info
+    if not token_info:
+        return jsonify({"error": "Usuario no autenticado. Visita /login primero."}), 403
+    
+    spotify_uri = request.args.get("spotify_uri")
+    if not spotify_uri:
+        return jsonify({"error": "Falta el parámetro spotify_uri"}), 400
+    
+    sp = get_spotify_client()
+    if sp is None:
+        return jsonify({"error": "Token no válido"}), 403
+    
+    try:
+        track_id = spotify_uri.split(":")[-1]  # extraer id si es URI completo
+        track = sp.track(track_id)
+        nombre = track['name']
+        artista = track['artists'][0]['name']
+        return jsonify({"nombre": nombre, "artista": artista})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/")
 def home():
     return "Servidor Music Picker funcionando 🎵"
@@ -45,6 +70,7 @@ def home():
 def login():
     auth_url = sp_oauth.get_authorize_url()
     return redirect(auth_url)
+
 
 @app.route("/callback")
 def callback():

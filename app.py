@@ -15,8 +15,17 @@ sp_oauth = SpotifyOAuth(
 )
 
 
+
+
 # Guardar token para la sesión
 token_info = None
+
+def get_spotify_client():
+    global token_info
+    if not token_info:
+        return None
+    return Spotify(auth=token_info["access_token"])
+
 
 # Canciones por estado emocional
 canciones_relajado = [

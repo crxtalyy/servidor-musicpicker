@@ -29,21 +29,21 @@ def get_spotify_client():
 
 # Canciones por estado emocional
 canciones_relajado = [
-    "spotify:track:5nNmj1cLH3r4aA4XDJ2bgY",  # Je te laisserai des mots - Patrick Watson
-    "spotify:track:4kkl6Wt7JHhVAzWbvzCcE6",  # Glimpse of Us - Joji
-    "spotify:track:5wANPM4fQCJwkGd4rN57mH",  # favorite crime - Olivia Rodrigo
+    "spotify:track:44A0o4jA8F2ZF03Zacwlwx",  # Je te laisserai des mots - Patrick Watson
+    "spotify:track:3aBGKDiAAvH2H7HLOyQ4US",  # Glimpse of Us - Joji
+    "spotify:track:5JCoSi02qi3jJeHdZXMmR8",  # favorite crime - Olivia Rodrigo
 ]
 
 canciones_normal = [
-    "spotify:track:1FoKhG7HP9AJm7nBxz6hX5",  # Si tú me quisieras - Mon Laferte
-    "spotify:track:4QGW5KkT3URwd38QVc99gl",  # La Verdad - Kidd Voodoo
-    "spotify:track:4UoYkF2wnc5n4jqbH5azvB",  # poison poison - Reneé Rapp
+    "spotify:track:7EySX8ldJHoeWjJhJyZ8Tq",  # Si tú me quisieras - Mon Laferte
+    "spotify:track:465lkwZP4ZXzWqZq4kOhgW",  # La Verdad - Kidd Voodoo
+    "spotify:track:7e1arKsP7vPjdwssVPHgZk",  # poison poison - Reneé Rapp
 ]
 
 canciones_agitado = [
-    "spotify:track:0VgkVdmE4gld66l8iyGjgx",  # Be Someone - Benson Boone
-    "spotify:track:2dHHgzDwk4BJdRwy9uXhTO",  # So American - Olivia Rodrigo
-    "spotify:track:6DXk1aLxSk2K2fJUSFbP6G",  # Disaster - Conan Gray
+    "spotify:track:1j2iMeSWdsEP5ITCrZqbIL",  # Be Someone - Benson Boone
+    "spotify:track:5Jh1i0no3vJ9u4deXkb4aV",  # So American - Olivia Rodrigo
+    "spotify:track:3SWGtKHaCFEUqfm9ydUFVw",  # Disaster - Conan Gray
 ]
 
 

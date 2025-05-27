@@ -6,18 +6,14 @@ import random
 
 app = Flask(__name__)
 
-# Configuración de Spotify OAuth
+# Autenticación Spotify
 sp_oauth = SpotifyOAuth(
     client_id=os.getenv("SPOTIPY_CLIENT_ID"),
     client_secret=os.getenv("SPOTIPY_CLIENT_SECRET"),
-    redirect_uri="https://musicpicker-server.onrender.com/callback",  # ⚠️ Este es tu URL real con /callback
-    scope="user-modify-playback-state"
+    redirect_uri="https://musicpicker-server.onrender.com/callback",
+    scope="user-modify-playback-state user-read-playback-state"
 )
 
-
-
-
-# Guardar token para la sesión
 token_info = None
 
 def get_spotify_client():
@@ -27,92 +23,103 @@ def get_spotify_client():
     return Spotify(auth=token_info["access_token"])
 
 
-# Canciones por estado emocional
+# Playlists por estado
 canciones_relajado = [
-    "spotify:track:44A0o4jA8F2ZF03Zacwlwx",  # Je te laisserai des mots - Patrick Watson
-    "spotify:track:3aBGKDiAAvH2H7HLOyQ4US",  # Glimpse of Us - Joji
-    "spotify:track:5JCoSi02qi3jJeHdZXMmR8",  # favorite crime - Olivia Rodrigo
+    "spotify:track:44A0o4jA8F2ZF03Zacwlwx",
+    "spotify:track:3aBGKDiAAvH2H7HLOyQ4US",
+    "spotify:track:5JCoSi02qi3jJeHdZXMmR8"
 ]
 
 canciones_normal = [
-    "spotify:track:7EySX8ldJHoeWjJhJyZ8Tq",  # Si tú me quisieras - Mon Laferte
-    "spotify:track:465lkwZP4ZXzWqZq4kOhgW",  # La Verdad - Kidd Voodoo
-    "spotify:track:7e1arKsP7vPjdwssVPHgZk",  # poison poison - Reneé Rapp
+    "spotify:track:7EySX8ldJHoeWjJhJyZ8Tq",
+    "spotify:track:465lkwZP4ZXzWqZq4kOhgW",
+    "spotify:track:7e1arKsP7vPjdwssVPHgZk"
 ]
 
 canciones_agitado = [
-    "spotify:track:1j2iMeSWdsEP5ITCrZqbIL",  # Be Someone - Benson Boone
-    "spotify:track:5Jh1i0no3vJ9u4deXkb4aV",  # So American - Olivia Rodrigo
-    "spotify:track:3SWGtKHaCFEUqfm9ydUFVw",  # Disaster - Conan Gray
+    "spotify:track:1j2iMeSWdsEP5ITCrZqbIL",
+    "spotify:track:5Jh1i0no3vJ9u4deXkb4aV",
+    "spotify:track:3SWGtKHaCFEUqfm9ydUFVw"
 ]
 
 
-
-@app.route("/cancion")
-def cancion():
-    global token_info
-    if not token_info:
-        return jsonify({"error": "Usuario no autenticado. Visita /login primero."}), 403
-    
-    spotify_uri = request.args.get("spotify_uri")
-    if not spotify_uri:
-        return jsonify({"error": "Falta el parámetro spotify_uri"}), 400
-    
-    sp = get_spotify_client()
-    if sp is None:
-        return jsonify({"error": "Token no válido"}), 403
-    
-    try:
-        track_id = spotify_uri.split(":")[-1]  # extraer id si es URI completo
-        track = sp.track(track_id)
-        nombre = track['name']
-        artista = track['artists'][0]['name']
-        return jsonify({"nombre": nombre, "artista": artista})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
 @app.route("/")
 def home():
-    return "Servidor Music Picker funcionando 🎵"
+    return "🎵 Servidor Music Picker activo"
 
 @app.route("/login")
 def login():
     auth_url = sp_oauth.get_authorize_url()
     return redirect(auth_url)
 
-
 @app.route("/callback")
 def callback():
     global token_info
     code = request.args.get("code")
     token_info = sp_oauth.get_access_token(code)
-    return "¡Autenticación completa! Ya puedes enviar BPM."
+    return "✅ Autenticación completada"
 
 @app.route("/play", methods=["POST"])
 def play_music():
     global token_info
-    bpm = int(request.json.get("bpm", 0))
 
     if not token_info:
-        return "Usuario no autenticado. Visita /login primero.", 403
+        return "❌ Usuario no autenticado", 403
 
-    sp = Spotify(auth=token_info["access_token"])
+    bpm = int(request.json.get("bpm", 0))
+    sp = get_spotify_client()
+    if not sp:
+        return "❌ Token inválido", 403
 
-    # Elegir una canción aleatoria según BPM
-    if bpm < 60:
-        uri = random.choice(canciones_relajado)
-        estado = "Relajado"
-    elif 60 <= bpm <= 120:
-        uri = random.choice(canciones_normal)
-        estado = "Normal"
-    else:
-        uri = random.choice(canciones_agitado)
-        estado = "Agitado"
+    try:
+        current = sp.current_playback()
 
-    sp.start_playback(uris=[uri])
-    return f"Reproduciendo canción del estado {estado} para BPM {bpm}."
+        # Si hay una canción ya sonando, espera que termine (menos de 10s para poder cambiar)
+        if current and current["is_playing"]:
+            progress = current["progress_ms"]
+            duration = current["item"]["duration_ms"]
+            if duration - progress > 10_000:
+                return "⏳ Esperando que termine la canción actual", 200
 
-# Permite que Render use el puerto asignado
+        # Elegir canción por BPM
+        if bpm < 60:
+            uri = random.choice(canciones_relajado)
+            estado = "Relajado"
+        elif 60 <= bpm <= 120:
+            uri = random.choice(canciones_normal)
+            estado = "Normal"
+        else:
+            uri = random.choice(canciones_agitado)
+            estado = "Agitado"
+
+        sp.start_playback(uris=[uri])
+        return f"▶️ Reproduciendo {estado} para BPM {bpm}", 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/cancion")
+def cancion():
+    global token_info
+    if not token_info:
+        return jsonify({"error": "Usuario no autenticado"}), 403
+
+    spotify_uri = request.args.get("spotify_uri")
+    if not spotify_uri:
+        return jsonify({"error": "Falta parámetro spotify_uri"}), 400
+
+    sp = get_spotify_client()
+    try:
+        track_id = spotify_uri.split(":")[-1]
+        track = sp.track(track_id)
+        return jsonify({
+            "nombre": track['name'],
+            "artista": track['artists'][0]['name']
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)

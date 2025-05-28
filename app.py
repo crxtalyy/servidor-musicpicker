@@ -75,11 +75,10 @@ def play_music():
         current = sp.current_playback()
 
         # Si hay una canción ya sonando, espera que termine (menos de 10s para poder cambiar)
-        if current and current["is_playing"]:
-            progress = current["progress_ms"]
-            duration = current["item"]["duration_ms"]
-            if duration - progress > 10_000:
-                return "⏳ Esperando que termine la canción actual", 200
+       if current and current["is_playing"]:
+    return "🎵 Ya hay una canción reproduciéndose", 200
+
+
 
         # Elegir canción por BPM
         if bpm < 60:

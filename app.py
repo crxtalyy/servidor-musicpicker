@@ -22,7 +22,6 @@ def get_spotify_client():
         return None
     return Spotify(auth=token_info["access_token"])
 
-
 # Playlists por estado
 canciones_relajado = [
     "spotify:track:44A0o4jA8F2ZF03Zacwlwx",
@@ -41,7 +40,6 @@ canciones_agitado = [
     "spotify:track:5Jh1i0no3vJ9u4deXkb4aV",
     "spotify:track:3SWGtKHaCFEUqfm9ydUFVw"
 ]
-
 
 @app.route("/")
 def home():
@@ -74,11 +72,9 @@ def play_music():
     try:
         current = sp.current_playback()
 
-        # Si hay una canción ya sonando, espera que termine (menos de 10s para poder cambiar)
-       if current and current["is_playing"]:
-    return "🎵 Ya hay una canción reproduciéndose", 200
-
-
+        # ❗ No cambiar la canción si ya hay una en reproducción
+        if current and current["is_playing"]:
+            return "🎵 Ya hay una canción reproduciéndose", 200
 
         # Elegir canción por BPM
         if bpm < 60:
@@ -96,7 +92,6 @@ def play_music():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 @app.route("/cancion")
 def cancion():

@@ -3,6 +3,8 @@ from spotipy import Spotify
 from spotipy.oauth2 import SpotifyOAuth
 import os
 import random
+import threading
+import time
 
 app = Flask(__name__)
 
@@ -79,7 +81,7 @@ def play_music():
     try:
         current = sp.current_playback()
 
-        # ❗ No cambiar la canción si ya hay una en reproducción
+        # No cambiar la canción si ya hay una en reproducción
         if current and current["is_playing"]:
             return "🎵 Ya hay una canción reproduciéndose", 200
 
@@ -142,6 +144,39 @@ def elegir_cancion(categoria):
     reproducidas[categoria].append(nueva)
     return nueva
 
+def reproductor_autonomo():
+    global token_info, ultimo_bpm
+    while True:
+        if token_info is None or ultimo_bpm is None:
+            time.sleep(2)
+            continue
+        
+        sp = get_spotify_client()
+        if not sp:
+            time.sleep(2)
+            continue
+        
+        try:
+            current = sp.current_playback()
+            # Si no está reproduciendo nada y hay un BPM conocido, reproduce
+            if not current or not current["is_playing"]:
+                bpm = ultimo_bpm
+                if bpm < 60:
+                    categoria = "relajado"
+                elif 60 <= bpm <= 120:
+                    categoria = "normal"
+                else:
+                    categoria = "agitado"
+                uri = elegir_cancion(categoria)
+                sp.start_playback(uris=[uri])
+                print(f"▶️ [Autónomo] Reproduciendo {categoria} para BPM {bpm}")
+        except Exception as e:
+            print(f"Error en reproductor autónomo: {e}")
+        
+        time.sleep(5)  # Espera 5 segundos antes de volver a chequear
+
 if __name__ == "__main__":
+    hilo = threading.Thread(target=reproductor_autonomo, daemon=True)
+    hilo.start()
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)

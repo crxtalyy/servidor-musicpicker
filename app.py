@@ -17,9 +17,10 @@ sp_oauth = SpotifyOAuth(
 )
 
 token_info = None
-
-# BPM más reciente y canciones reproducidas por estado
 ultimo_bpm = None
+bpm_timestamp = None  # ⏱️ Guarda el tiempo del último BPM
+
+# Reproducciones por categoría
 reproducidas = {
     "relajado": [],
     "normal": [],
@@ -32,7 +33,7 @@ def get_spotify_client():
         return None
     return Spotify(auth=token_info["access_token"])
 
-# Playlists por estado
+# Canciones por categoría
 canciones_relajado = [
     "spotify:track:44A0o4jA8F2ZF03Zacwlwx",
     "spotify:track:3aBGKDiAAvH2H7HLOyQ4US",
@@ -69,10 +70,11 @@ def callback():
 
 @app.route("/play", methods=["POST"])
 def play_music():
-    global token_info, ultimo_bpm
+    global token_info, ultimo_bpm, bpm_timestamp
 
     bpm = int(request.json.get("bpm", 0))
-    ultimo_bpm = bpm  # Guardamos el último BPM recibido
+    ultimo_bpm = bpm
+    bpm_timestamp = time.time()  # ⏱️ Guardar el momento actual
 
     sp = get_spotify_client()
     if not sp:
@@ -144,15 +146,24 @@ def elegir_cancion(categoria):
     return nueva
 
 def reproductor_autonomo():
-    global token_info, ultimo_bpm
+    global token_info, ultimo_bpm, bpm_timestamp
     while True:
-        if token_info is None or ultimo_bpm is None:
+        now = time.time()
+
+        if token_info is None or ultimo_bpm is None or bpm_timestamp is None:
             time.sleep(2)
             continue
+
+        # ⏱️ Si pasaron más de 15 segundos sin nuevo BPM, no reproducir
+        if now - bpm_timestamp > 15:
+            time.sleep(2)
+            continue
+
         sp = get_spotify_client()
         if not sp:
             time.sleep(2)
             continue
+
         try:
             current = sp.current_playback()
             if not current or not current["is_playing"]:

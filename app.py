@@ -81,11 +81,9 @@ def play_music():
     try:
         current = sp.current_playback()
 
-        # No cambiar la canción si ya hay una en reproducción
         if current and current["is_playing"]:
             return "🎵 Ya hay una canción reproduciéndose", 200
 
-        # Elegir canción por BPM
         if bpm < 60:
             categoria = "relajado"
             estado = "Relajado"
@@ -99,6 +97,7 @@ def play_music():
         uri = elegir_cancion(categoria)
 
         sp.start_playback(uris=[uri])
+        print(f"▶️ [Manual] Reproduciendo canción para BPM {bpm} (categoría: {categoria}) - URI: {uri}")
         return f"▶️ Reproduciendo {estado} para BPM {bpm}", 200
 
     except Exception as e:
@@ -150,15 +149,12 @@ def reproductor_autonomo():
         if token_info is None or ultimo_bpm is None:
             time.sleep(2)
             continue
-        
         sp = get_spotify_client()
         if not sp:
             time.sleep(2)
             continue
-        
         try:
             current = sp.current_playback()
-            # Si no está reproduciendo nada y hay un BPM conocido, reproduce
             if not current or not current["is_playing"]:
                 bpm = ultimo_bpm
                 if bpm < 60:
@@ -169,11 +165,11 @@ def reproductor_autonomo():
                     categoria = "agitado"
                 uri = elegir_cancion(categoria)
                 sp.start_playback(uris=[uri])
-                print(f"▶️ [Autónomo] Reproduciendo {categoria} para BPM {bpm}")
+                print(f"▶️ [Autónomo] Reproduciendo canción para BPM {bpm} (categoría: {categoria}) - URI: {uri}")
         except Exception as e:
-            print(f"Error en reproductor autónomo: {e}")
-        
-        time.sleep(5)  # Espera 5 segundos antes de volver a chequear
+            print(f"❌ Error en reproductor autónomo: {e}")
+
+        time.sleep(5)
 
 if __name__ == "__main__":
     hilo = threading.Thread(target=reproductor_autonomo, daemon=True)

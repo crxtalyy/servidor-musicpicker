@@ -16,6 +16,14 @@ sp_oauth = SpotifyOAuth(
 
 token_info = None
 
+# BPM más reciente y canciones reproducidas por estado
+ultimo_bpm = None
+reproducidas = {
+    "relajado": [],
+    "normal": [],
+    "agitado": []
+}
+
 def get_spotify_client():
     global token_info
     if not token_info:
@@ -59,12 +67,11 @@ def callback():
 
 @app.route("/play", methods=["POST"])
 def play_music():
-    global token_info
-
-    if not token_info:
-        return "❌ Usuario no autenticado", 403
+    global token_info, ultimo_bpm
 
     bpm = int(request.json.get("bpm", 0))
+    ultimo_bpm = bpm  # Guardamos el último BPM recibido
+
     sp = get_spotify_client()
     if not sp:
         return "❌ Token inválido", 403
@@ -78,14 +85,16 @@ def play_music():
 
         # Elegir canción por BPM
         if bpm < 60:
-            uri = random.choice(canciones_relajado)
+            categoria = "relajado"
             estado = "Relajado"
         elif 60 <= bpm <= 120:
-            uri = random.choice(canciones_normal)
+            categoria = "normal"
             estado = "Normal"
         else:
-            uri = random.choice(canciones_agitado)
+            categoria = "agitado"
             estado = "Agitado"
+
+        uri = elegir_cancion(categoria)
 
         sp.start_playback(uris=[uri])
         return f"▶️ Reproduciendo {estado} para BPM {bpm}", 200
@@ -113,6 +122,25 @@ def cancion():
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+def elegir_cancion(categoria):
+    if categoria == "relajado":
+        canciones = canciones_relajado
+    elif categoria == "normal":
+        canciones = canciones_normal
+    else:
+        canciones = canciones_agitado
+
+    ya_reproducidas = reproducidas[categoria]
+    disponibles = [c for c in canciones if c not in ya_reproducidas]
+
+    if not disponibles:
+        reproducidas[categoria] = []
+        disponibles = canciones.copy()
+
+    nueva = random.choice(disponibles)
+    reproducidas[categoria].append(nueva)
+    return nueva
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))

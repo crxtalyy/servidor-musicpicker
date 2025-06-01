@@ -94,44 +94,43 @@ def play_music():
         return jsonify({"error": str(e)}), 500
 
 def recomendar_canciones_por_estado(sp, categoria, bpm):
+    # Parámestros relajados para no ser muy restrictivos
     if categoria == "relajado":
-        energy = 0.2
-        valence = 0.4
-        tempo = 70
+        target_energy = 0.3
+        target_valence = 0.3
+        target_tempo = 60
     elif categoria == "normal":
-        energy = 0.5
-        valence = 0.6
-        tempo = 100
-    else:
-        energy = 0.8
-        valence = 0.8
-        tempo = 130
+        target_energy = 0.5
+        target_valence = 0.5
+        target_tempo = 90
+    else:  # agitado
+        target_energy = 0.7
+        target_valence = 0.7
+        target_tempo = 120
 
-    print(f"🎧 Recomendando canciones para categoría '{categoria}' con energy={energy}, valence={valence}, tempo={tempo}")
+    print(f"🎧 Pidiendo recomendaciones para '{categoria}' con energy={target_energy}, valence={target_valence}, tempo={target_tempo}")
 
     try:
         recommendations = sp.recommendations(
-            seed_genres=["pop", "rock", "indie", "chill"],
+            seed_genres=["pop", "rock", "indie"],
             limit=10,
-            target_energy=energy,
-            target_valence=valence,
-            target_tempo=tempo
+            target_energy=target_energy,
+            target_valence=target_valence,
+            target_tempo=target_tempo
         )
+        print("Respuesta de recomendaciones:", recommendations)
 
         tracks = recommendations.get('tracks', [])
         if not tracks:
-            print("⚠️ No se encontraron canciones recomendadas para estos parámetros")
+            print("⚠️ No se encontraron canciones recomendadas en Spotify")
             return None
 
-        print(f"🎶 {len(tracks)} canciones recomendadas:")
-        for t in tracks:
-            print(f" - {t['name']} por {t['artists'][0]['name']}")
-
-        uris = [t['uri'] for t in tracks]
+        uris = [track['uri'] for track in tracks]
+        print(f"🎶 Se encontraron {len(uris)} canciones")
         return uris
 
     except Exception as e:
-        print(f"❌ Error obteniendo recomendaciones: {e}")
+        print(f"❌ Error al obtener recomendaciones: {e}")
         return None
 
 def reproductor_autonomo():

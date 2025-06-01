@@ -2,13 +2,11 @@ from flask import Flask, request, redirect, jsonify
 from spotipy import Spotify
 from spotipy.oauth2 import SpotifyOAuth
 import os
-import random
 import threading
 import time
 
 app = Flask(__name__)
 
-# Autenticación Spotify
 sp_oauth = SpotifyOAuth(
     client_id=os.getenv("SPOTIPY_CLIENT_ID"),
     client_secret=os.getenv("SPOTIPY_CLIENT_SECRET"),
@@ -18,39 +16,13 @@ sp_oauth = SpotifyOAuth(
 
 token_info = None
 ultimo_bpm = None
-bpm_timestamp = None  # ⏱️ Guarda el tiempo del último BPM
-
-# Reproducciones por categoría
-reproducidas = {
-    "relajado": [],
-    "normal": [],
-    "agitado": []
-}
+bpm_timestamp = None
 
 def get_spotify_client():
     global token_info
     if not token_info:
         return None
     return Spotify(auth=token_info["access_token"])
-
-# Canciones por categoría
-canciones_relajado = [
-    "spotify:track:44A0o4jA8F2ZF03Zacwlwx",
-    "spotify:track:3aBGKDiAAvH2H7HLOyQ4US",
-    "spotify:track:5JCoSi02qi3jJeHdZXMmR8"
-]
-
-canciones_normal = [
-    "spotify:track:7EySX8ldJHoeWjJhJyZ8Tq",
-    "spotify:track:465lkwZP4ZXzWqZq4kOhgW",
-    "spotify:track:7e1arKsP7vPjdwssVPHgZk"
-]
-
-canciones_agitado = [
-    "spotify:track:1j2iMeSWdsEP5ITCrZqbIL",
-    "spotify:track:5Jh1i0no3vJ9u4deXkb4aV",
-    "spotify:track:3SWGtKHaCFEUqfm9ydUFVw"
-]
 
 @app.route("/")
 def home():
@@ -74,7 +46,7 @@ def play_music():
 
     bpm = int(request.json.get("bpm", 0))
     ultimo_bpm = bpm
-    bpm_timestamp = time.time()  # ⏱️ Guardar el momento actual
+    bpm_timestamp = time.time()
 
     sp = get_spotify_client()
     if not sp:
@@ -82,7 +54,6 @@ def play_music():
 
     try:
         current = sp.current_playback()
-
         if current and current["is_playing"]:
             return "🎵 Ya hay una canción reproduciéndose", 200
 
@@ -96,11 +67,13 @@ def play_music():
             categoria = "agitado"
             estado = "Agitado"
 
-        uri = elegir_cancion(categoria)
-
-        sp.start_playback(uris=[uri])
-        print(f"▶️ [Manual] Reproduciendo canción para BPM {bpm} (categoría: {categoria}) - URI: {uri}")
-        return f"▶️ Reproduciendo {estado} para BPM {bpm}", 200
+        uris = recomendar_cancion_por_estado(sp, categoria, bpm)
+        if uris:
+            sp.start_playback(uris=uris)
+            print(f"▶️ [Manual] Reproduciendo recomendaciones para BPM {bpm} (categoría: {categoria})")
+            return f"▶️ Reproduciendo {estado} para BPM {bpm}", 200
+        else:
+            return "❌ No se encontraron canciones recomendadas", 500
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -127,23 +100,46 @@ def cancion():
         return jsonify({"error": str(e)}), 500
 
 def elegir_cancion(categoria):
+    sp = get_spotify_client()
+    if not sp:
+        return None
+
+    # Configurar parámetros de recomendación según la categoría
     if categoria == "relajado":
-        canciones = canciones_relajado
+        energy = 0.2
+        valence = 0.4
+        tempo = 70
     elif categoria == "normal":
-        canciones = canciones_normal
-    else:
-        canciones = canciones_agitado
+        energy = 0.5
+        valence = 0.6
+        tempo = 100
+    else:  # agitado
+        energy = 0.8
+        valence = 0.8
+        tempo = 130
 
-    ya_reproducidas = reproducidas[categoria]
-    disponibles = [c for c in canciones if c not in ya_reproducidas]
+    try:
+        recommendations = sp.recommendations(
+            seed_genres=["pop", "rock", "indie", "chill", "latin"],
+            limit=10,
+            target_energy=energy,
+            target_valence=valence,
+            target_tempo=tempo
+        )
 
-    if not disponibles:
-        reproducidas[categoria] = []
-        disponibles = canciones.copy()
+        tracks = recommendations['tracks']
+        if not tracks:
+            print("⚠️ No se encontraron recomendaciones.")
+            return None
 
-    nueva = random.choice(disponibles)
-    reproducidas[categoria].append(nueva)
-    return nueva
+        track = random.choice(tracks)
+        uri = track['uri']
+        print(f"🎧 Recomendado: {track['name']} - {track['artists'][0]['name']} (URI: {uri})")
+        return uri
+
+    except Exception as e:
+        print(f"❌ Error al obtener recomendaciones: {e}")
+        return None
 
 def reproductor_autonomo():
     global token_info, ultimo_bpm, bpm_timestamp
@@ -154,7 +150,6 @@ def reproductor_autonomo():
             time.sleep(2)
             continue
 
-        # ⏱️ Si pasaron más de 15 segundos sin nuevo BPM, no reproducir
         if now - bpm_timestamp > 15:
             time.sleep(2)
             continue
@@ -174,9 +169,10 @@ def reproductor_autonomo():
                     categoria = "normal"
                 else:
                     categoria = "agitado"
-                uri = elegir_cancion(categoria)
-                sp.start_playback(uris=[uri])
-                print(f"▶️ [Autónomo] Reproduciendo canción para BPM {bpm} (categoría: {categoria}) - URI: {uri}")
+                uris = recomendar_cancion_por_estado(sp, categoria, bpm)
+                if uris:
+                    sp.start_playback(uris=uris)
+                    print(f"▶️ [Autónomo] Reproduciendo recomendaciones para BPM {bpm} (categoría: {categoria})")
         except Exception as e:
             print(f"❌ Error en reproductor autónomo: {e}")
 

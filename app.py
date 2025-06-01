@@ -86,10 +86,10 @@ def play_music():
         if current and current["is_playing"]:
             return "🎵 Ya hay una canción reproduciéndose", 200
 
-        if bpm < 60:
+        if bpm < 75:
             categoria = "relajado"
             estado = "Relajado"
-        elif 60 <= bpm <= 120:
+        elif 75 <= bpm <= 110:
             categoria = "normal"
             estado = "Normal"
         else:

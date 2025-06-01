@@ -2,11 +2,13 @@ from flask import Flask, request, redirect, jsonify
 from spotipy import Spotify
 from spotipy.oauth2 import SpotifyOAuth
 import os
+import random
 import threading
 import time
 
 app = Flask(__name__)
 
+# Autenticación Spotify
 sp_oauth = SpotifyOAuth(
     client_id=os.getenv("SPOTIPY_CLIENT_ID"),
     client_secret=os.getenv("SPOTIPY_CLIENT_SECRET"),
@@ -16,18 +18,39 @@ sp_oauth = SpotifyOAuth(
 
 token_info = None
 ultimo_bpm = None
-bpm_timestamp = None
+bpm_timestamp = None  # ⏱️ Guarda el tiempo del último BPM
+
+# Reproducciones por categoría
+reproducidas = {
+    "relajado": [],
+    "normal": [],
+    "agitado": []
+}
 
 def get_spotify_client():
     global token_info
     if not token_info:
-        print("❌ No hay token aún")
         return None
-
-    if sp_oauth.is_token_expired(token_info):
-        print("🔄 Refrescando token Spotify...")
-        token_info = sp_oauth.refresh_access_token(token_info['refresh_token'])
     return Spotify(auth=token_info["access_token"])
+
+# Canciones por categoría
+canciones_relajado = [
+    "spotify:track:44A0o4jA8F2ZF03Zacwlwx",
+    "spotify:track:3aBGKDiAAvH2H7HLOyQ4US",
+    "spotify:track:5JCoSi02qi3jJeHdZXMmR8"
+]
+
+canciones_normal = [
+    "spotify:track:7EySX8ldJHoeWjJhJyZ8Tq",
+    "spotify:track:465lkwZP4ZXzWqZq4kOhgW",
+    "spotify:track:7e1arKsP7vPjdwssVPHgZk"
+]
+
+canciones_agitado = [
+    "spotify:track:1j2iMeSWdsEP5ITCrZqbIL",
+    "spotify:track:5Jh1i0no3vJ9u4deXkb4aV",
+    "spotify:track:3SWGtKHaCFEUqfm9ydUFVw"
+]
 
 @app.route("/")
 def home():
@@ -43,95 +66,84 @@ def callback():
     global token_info
     code = request.args.get("code")
     token_info = sp_oauth.get_access_token(code)
-    print("✅ Autenticación completada")
     return "✅ Autenticación completada"
 
 @app.route("/play", methods=["POST"])
 def play_music():
     global token_info, ultimo_bpm, bpm_timestamp
 
-    bpm = request.json.get("bpm")
-    if bpm is None:
-        return "❌ No se envió BPM", 400
-
-    try:
-        bpm = float(bpm)
-    except:
-        return "❌ BPM inválido", 400
-
+    bpm = int(request.json.get("bpm", 0))
     ultimo_bpm = bpm
-    bpm_timestamp = time.time()
-    print(f"💓 BPM detectado: {bpm}")
+    bpm_timestamp = time.time()  # ⏱️ Guardar el momento actual
 
     sp = get_spotify_client()
     if not sp:
-        return "❌ Token inválido o no autenticado", 403
+        return "❌ Token inválido", 403
 
     try:
         current = sp.current_playback()
+
         if current and current["is_playing"]:
-            print("🎵 Ya hay música sonando, no se inicia otra lista")
-            return "🎵 Música ya sonando", 200
+            return "🎵 Ya hay una canción reproduciéndose", 200
 
         if bpm < 60:
             categoria = "relajado"
+            estado = "Relajado"
         elif 60 <= bpm <= 120:
             categoria = "normal"
+            estado = "Normal"
         else:
             categoria = "agitado"
+            estado = "Agitado"
 
-        uris = recomendar_canciones_por_estado(sp, categoria, bpm)
-        if uris:
-            sp.start_playback(uris=uris)
-            print(f"▶️ [Manual] Reproduciendo lista para BPM {bpm} (categoría: {categoria})")
-            return f"▶️ Reproduciendo lista {categoria} para BPM {bpm}", 200
-        else:
-            print("❌ No se encontraron canciones recomendadas")
-            return "❌ No se encontraron canciones recomendadas", 500
+        uri = elegir_cancion(categoria)
+
+        sp.start_playback(uris=[uri])
+        print(f"▶️ [Manual] Reproduciendo canción para BPM {bpm} (categoría: {categoria}) - URI: {uri}")
+        return f"▶️ Reproduciendo {estado} para BPM {bpm}", 200
 
     except Exception as e:
-        print(f"❌ Error en play_music: {e}")
         return jsonify({"error": str(e)}), 500
 
-def recomendar_canciones_por_estado(sp, categoria, bpm):
-    # Parámestros relajados para no ser muy restrictivos
-    if categoria == "relajado":
-        target_energy = 0.3
-        target_valence = 0.3
-        target_tempo = 60
-    elif categoria == "normal":
-        target_energy = 0.5
-        target_valence = 0.5
-        target_tempo = 90
-    else:  # agitado
-        target_energy = 0.7
-        target_valence = 0.7
-        target_tempo = 120
+@app.route("/cancion")
+def cancion():
+    global token_info
+    if not token_info:
+        return jsonify({"error": "Usuario no autenticado"}), 403
 
-    print(f"🎧 Pidiendo recomendaciones para '{categoria}' con energy={target_energy}, valence={target_valence}, tempo={target_tempo}")
+    spotify_uri = request.args.get("spotify_uri")
+    if not spotify_uri:
+        return jsonify({"error": "Falta parámetro spotify_uri"}), 400
 
+    sp = get_spotify_client()
     try:
-        recommendations = sp.recommendations(
-            seed_genres=["pop", "rock", "indie"],
-            limit=10,
-            target_energy=target_energy,
-            target_valence=target_valence,
-            target_tempo=target_tempo
-        )
-        print("Respuesta de recomendaciones:", recommendations)
-
-        tracks = recommendations.get('tracks', [])
-        if not tracks:
-            print("⚠️ No se encontraron canciones recomendadas en Spotify")
-            return None
-
-        uris = [track['uri'] for track in tracks]
-        print(f"🎶 Se encontraron {len(uris)} canciones")
-        return uris
-
+        track_id = spotify_uri.split(":")[-1]
+        track = sp.track(track_id)
+        return jsonify({
+            "nombre": track['name'],
+            "artista": track['artists'][0]['name']
+        })
     except Exception as e:
-        print(f"❌ Error al obtener recomendaciones: {e}")
-        return None
+        return jsonify({"error": str(e)}), 500
+
+def elegir_cancion(categoria):
+    if categoria == "relajado":
+        canciones = canciones_relajado
+    elif categoria == "normal":
+        canciones = canciones_normal
+    else:
+        canciones = canciones_agitado
+
+    ya_reproducidas = reproducidas[categoria]
+    disponibles = [c for c in canciones if c not in ya_reproducidas]
+
+    if not disponibles:
+        reproducidas[categoria] = []
+        disponibles = canciones.copy()
+
+    nueva = random.choice(disponibles)
+    reproducidas[categoria].append(nueva)
+    return nueva
 
 def reproductor_autonomo():
     global token_info, ultimo_bpm, bpm_timestamp
@@ -142,8 +154,8 @@ def reproductor_autonomo():
             time.sleep(2)
             continue
 
-        # Si hace más de 45 segundos que no llega BPM nuevo, no reproducir
-        if now - bpm_timestamp > 45:
+        # ⏱️ Si pasaron más de 30 segundos sin nuevo BPM, no reproducir
+        if now - bpm_timestamp > 30:
             time.sleep(2)
             continue
 
@@ -154,8 +166,7 @@ def reproductor_autonomo():
 
         try:
             current = sp.current_playback()
-            # Si no hay reproducción activa, lanzar lista según último BPM
-            if not current or not current.get("is_playing", False):
+            if not current or not current["is_playing"]:
                 bpm = ultimo_bpm
                 if bpm < 60:
                     categoria = "relajado"
@@ -163,12 +174,9 @@ def reproductor_autonomo():
                     categoria = "normal"
                 else:
                     categoria = "agitado"
-
-                uris = recomendar_canciones_por_estado(sp, categoria, bpm)
-                if uris:
-                    sp.start_playback(uris=uris)
-                    print(f"▶️ [Autónomo] Reproduciendo lista para BPM {bpm} (categoría: {categoria})")
-
+                uri = elegir_cancion(categoria)
+                sp.start_playback(uris=[uri])
+                print(f"▶️ [Autónomo] Reproduciendo canción para BPM {bpm} (categoría: {categoria}) - URI: {uri}")
         except Exception as e:
             print(f"❌ Error en reproductor autónomo: {e}")
 

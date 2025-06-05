@@ -23,7 +23,7 @@ estado_actual = None  # Guarda el estado emocional actual
 # ✅ NUEVAS playlists según estado
 playlist_uris = {
     "relajado": "spotify:playlist:2ObbFHzjAw5yucJ57MbqOn",
-    "normal":   "spotify:playlist:37i9dQZF1DWSoyxGghlqv5",
+    "normal":   "spotify:playlist:2sJg7IDpX3Nhhd0foFsi5a",
     "agitado":  "spotify:playlist:37i9dQZF1EIgSjgoYBB2M6"
 }
 

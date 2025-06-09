@@ -11,7 +11,7 @@ app = Flask(__name__)
 sp_oauth = SpotifyOAuth(
     client_id=os.getenv("SPOTIPY_CLIENT_ID"),
     client_secret=os.getenv("SPOTIPY_CLIENT_SECRET"),
-    redirect_uri="https://michi-servidor-musicpicker.onrender.com/callback",
+    redirect_uri="https://musicpicker-server.onrender.com/callback",
     scope="user-modify-playback-state user-read-playback-state"
 )
 
@@ -23,7 +23,7 @@ estado_actual = None  # Guarda el estado emocional actual
 # ✅ NUEVAS playlists según estado
 playlist_uris = {
     "relajado": "spotify:playlist:2ObbFHzjAw5yucJ57MbqOn",
-    "normal":   "spotify:playlist:2sJg7IDpX3Nhhd0foFsi5a",
+    "normal":   "spotify:playlist:37i9dQZF1DWSoyxGghlqv5",
     "agitado":  "spotify:playlist:37i9dQZF1EIgSjgoYBB2M6"
 }
 

@@ -1,0 +1,25 @@
+body {
+  background: linear-gradient(135deg, #1db954, #121212);
+  color: white;
+  font-family: Arial, sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+.container {
+  background: rgba(0,0,0,0.7);
+  padding: 40px;
+  border-radius: 15px;
+  text-align: center;
+}
+.btn {
+  display: inline-block;
+  margin-top: 20px;
+  padding: 15px 30px;
+  background: white;
+  color: #1db954;
+  text-decoration: none;
+  border-radius: 30px;
+  font-weight: bold;
+}

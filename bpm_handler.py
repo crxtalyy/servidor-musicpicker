@@ -1,6 +1,6 @@
 from flask import request, jsonify
 from spotipy import Spotify
-from auth import ultimo_token
+from auth import get_valid_token
 
 playlist_uris = {
     "relajado": "spotify:playlist:2ObbFHzjAw5yucJ57MbqOn",
@@ -12,10 +12,11 @@ def recibir_bpm():
     data = request.json or {}
     bpm = int(data.get("bpm", 0))
 
-    if not ultimo_token:
+    token_info = get_valid_token()
+    if not token_info:
         return "❌ No hay usuario autenticado", 401
 
-    sp = Spotify(auth=ultimo_token["access_token"])
+    sp = Spotify(auth=token_info["access_token"])
 
     if bpm < 75:
         estado = "relajado"

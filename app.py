@@ -1,32 +1,32 @@
-from flask import Flask, render_template, session, redirect, request
-from auth import login, callback
-from bpm_handler import recibir_bpm
+# app.py
+
+from flask import Flask, redirect
+from auth import sp_oauth, token_info
+from bpm_handler import bpm_blueprint
+from auto_player import iniciar_reproductor
+
 import os
 
 app = Flask(__name__)
-app.secret_key = "clave_super_secreta"
+app.register_blueprint(bpm_blueprint)
 
 @app.route("/")
 def home():
-    return render_template("login.html")
+    return "🎵 Servidor Music Picker activo"
 
 @app.route("/login")
-def spotify_login():
-    return login()
+def login():
+    auth_url = sp_oauth.get_authorize_url()
+    return redirect(auth_url)
 
 @app.route("/callback")
-def spotify_callback():
-    return callback()
-
-@app.route("/dashboard")
-def dashboard():
-    if "token_info" not in session:
-        return redirect("/")
-    return render_template("dashboard.html", user_id=session.get("user_id"))
-
-@app.route("/play", methods=["POST"])
-def play():
-    return recibir_bpm()
+def callback():
+    global token_info
+    code = request.args.get("code")
+    token_info = sp_oauth.get_access_token(code)
+    return "✅ Autenticación completada"
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
+    iniciar_reproductor()
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)

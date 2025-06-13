@@ -1,6 +1,7 @@
 from flask import Flask, render_template, session, redirect, request
 from auth import login, callback
 from bpm_handler import recibir_bpm
+import os
 
 app = Flask(__name__)
 app.secret_key = "clave_super_secreta"

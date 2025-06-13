@@ -1,7 +1,5 @@
-# app.py
-
-from flask import Flask, redirect
-from auth import sp_oauth, token_info
+from flask import Flask, redirect, request  # ← asegúrate de tener `request` importado
+from auth import sp_oauth, set_token_info  # ← CORREGIDO: importar solo lo necesario
 from bpm_handler import bpm_blueprint
 from auto_player import iniciar_reproductor
 
@@ -21,9 +19,9 @@ def login():
 
 @app.route("/callback")
 def callback():
-    global token_info
     code = request.args.get("code")
     token_info = sp_oauth.get_access_token(code)
+    set_token_info(token_info)  # ← CORREGIDO: guardamos el token usando la función
     return "✅ Autenticación completada"
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 import time
 import threading
 from spotipy import Spotify
-from auth import get_token_info  # ← corregido aquí
+from auth import get_token_info
 
 playlist_uris = {
     "relajado": "spotify:playlist:2ObbFHzjAw5yucJ57MbqOn",
@@ -29,10 +29,11 @@ def reproductor_autonomo():
             continue
 
         if now - bpm_timestamp > 30:
+            print("⏳ Sin BPM recientes. Pausando análisis.")
             time.sleep(2)
             continue
 
-        token_info = get_token_info()  # ← corregido aquí
+        token_info = get_token_info()
         if not token_info:
             time.sleep(2)
             continue
@@ -64,3 +65,14 @@ def reproductor_autonomo():
 
                 if progreso >= duracion - 1000:
                     playlist_uri = playlist_uris[nuevo_estado]
+                    sp.start_playback(context_uri=playlist_uri)
+                    estado_actual = nuevo_estado
+                    print(f"▶️ [Cambio de estado] a {nuevo_estado}: {playlist_uri}")
+        except Exception as e:
+            print(f"❌ Error en reproducción automática: {e}")
+
+        time.sleep(5)
+
+def iniciar_reproductor():
+    hilo = threading.Thread(target=reproductor_autonomo, daemon=True)
+    hilo.start()

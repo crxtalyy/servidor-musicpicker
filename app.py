@@ -1,5 +1,5 @@
-from flask import Flask, redirect, request  # ← asegúrate de tener `request` importado
-from auth import sp_oauth, set_token_info  # ← CORREGIDO: importar solo lo necesario
+from flask import Flask, redirect, request, render_template  # Import render_template para las vistas
+from auth import sp_oauth, set_token_info
 from bpm_handler import bpm_blueprint
 from auto_player import iniciar_reproductor
 
@@ -10,7 +10,8 @@ app.register_blueprint(bpm_blueprint)
 
 @app.route("/")
 def home():
-    return "🎵 Servidor Music Picker activo"
+    # Mostrar la página de login con el botón, usando template
+    return render_template("login.html")
 
 @app.route("/login")
 def login():
@@ -21,8 +22,9 @@ def login():
 def callback():
     code = request.args.get("code")
     token_info = sp_oauth.get_access_token(code)
-    set_token_info(token_info)  # ← CORREGIDO: guardamos el token usando la función
-    return "✅ Autenticación completada"
+    set_token_info(token_info)
+    # En lugar de solo texto, redirigimos a dashboard o mostramos la plantilla
+    return render_template("dashboard.html", user_id=token_info.get("id", "desconocido"))
 
 if __name__ == "__main__":
     iniciar_reproductor()

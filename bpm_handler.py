@@ -1,8 +1,6 @@
-# bpm_handler.py
-
 from flask import Blueprint, request, jsonify
 from spotipy import Spotify
-from auth import get_valid_token
+from auth import get_token_info  # ← corregido aquí
 from auto_player import actualizar_bpm
 
 bpm_blueprint = Blueprint("bpm", __name__)
@@ -17,7 +15,7 @@ def recibir_bpm():
         bpm = int(data.get("bpm"))
         actualizar_bpm(bpm)
 
-        token_info = get_valid_token()
+        token_info = get_token_info()  # ← corregido aquí
         if not token_info:
             return jsonify({"error": "Token inválido"}), 403
 

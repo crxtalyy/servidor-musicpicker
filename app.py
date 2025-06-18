@@ -1,7 +1,8 @@
-from flask import Flask, redirect, request, render_template  # Import render_template para las vistas
+from flask import Flask, redirect, request, render_template
 from auth import sp_oauth, set_token_info
 from bpm_handler import bpm_blueprint
 from auto_player import iniciar_reproductor
+from spotipy import Spotify  # Import para consultar perfil usuario
 
 import os
 
@@ -23,8 +24,14 @@ def callback():
     code = request.args.get("code")
     token_info = sp_oauth.get_access_token(code)
     set_token_info(token_info)
-    # En lugar de solo texto, redirigimos a dashboard o mostramos la plantilla
-    return render_template("dashboard.html", user_id=token_info.get("id", "desconocido"))
+
+    # Crear cliente Spotify para obtener perfil del usuario
+    sp = Spotify(auth=token_info['access_token'])
+    user_profile = sp.current_user()
+    user_id = user_profile.get("id", "desconocido")
+
+    # Mostrar dashboard con el user_id real
+    return render_template("dashboard.html", user_id=user_id)
 
 if __name__ == "__main__":
     iniciar_reproductor()

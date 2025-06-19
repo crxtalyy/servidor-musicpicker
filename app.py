@@ -1,12 +1,11 @@
-from flask import Flask, redirect, request, render_template, session
-from auth import sp_oauth
+from flask import Flask, redirect, request, render_template
+from auth import sp_oauth, set_token_info
 from bpm_handler import bpm_blueprint
 from auto_player import iniciar_reproductor
 from spotipy import Spotify
 import os
 
 app = Flask(__name__)
-app.secret_key = os.getenv("FLASK_SECRET_KEY", "clave_secreta_segura")  # Necesario para usar session
 app.register_blueprint(bpm_blueprint)
 
 @app.route("/")
@@ -22,11 +21,8 @@ def login():
 def callback():
     code = request.args.get("code")
     token_info = sp_oauth.get_access_token(code)
+    set_token_info(token_info)
 
-    # Guardar en session
-    session["token_info"] = token_info
-
-    # Obtener el usuario actual para mostrarlo
     sp = Spotify(auth=token_info['access_token'])
     user_profile = sp.current_user()
     user_id = user_profile.get("id", "desconocido")

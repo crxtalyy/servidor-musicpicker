@@ -1,9 +1,8 @@
 import os
 import time
-from flask import session
 from spotipy.oauth2 import SpotifyOAuth
 
-# Configuración de autenticación con Spotify
+# Autenticación para TU cuenta
 sp_oauth = SpotifyOAuth(
     client_id=os.getenv("SPOTIPY_CLIENT_ID"),
     client_secret=os.getenv("SPOTIPY_CLIENT_SECRET"),
@@ -11,25 +10,23 @@ sp_oauth = SpotifyOAuth(
     scope="user-modify-playback-state user-read-playback-state"
 )
 
+_token_info = None  # Guardamos el token globalmente
+
+def set_token_info(token):
+    global _token_info
+    _token_info = token
+
 def get_token_info():
-    token_info = session.get("token_info")
-    if not token_info:
+    global _token_info
+    if not _token_info:
         return None
 
     now = int(time.time())
-    expires_at = token_info.get('expires_at')
-    refresh_token = token_info.get('refresh_token')
-
-    # Validar que existan las claves necesarias
-    if not expires_at or not refresh_token:
-        return None
-
-    if expires_at - now < 60:
+    if _token_info.get('expires_at', 0) - now < 60:
         try:
-            token_info = sp_oauth.refresh_access_token(refresh_token)
-            session["token_info"] = token_info  # Actualizar en session
+            _token_info = sp_oauth.refresh_access_token(_token_info['refresh_token'])
         except Exception as e:
-            print("❌ Error al refrescar el token:", e)
+            print("❌ Error al refrescar token:", e)
             return None
 
-    return token_info
+    return _token_info

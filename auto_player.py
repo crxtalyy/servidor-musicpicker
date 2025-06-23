@@ -1,5 +1,6 @@
 import time
 import threading
+import random
 from spotipy import Spotify
 from auth import get_token_info
 
@@ -17,6 +18,20 @@ def actualizar_bpm(bpm):
     global ultimo_bpm, bpm_timestamp
     ultimo_bpm = bpm
     bpm_timestamp = time.time()
+
+def reproducir_playlist_aleatoria(sp, playlist_uri):
+    try:
+        playlist = sp.playlist(playlist_uri)
+        total_tracks = playlist['tracks']['total']
+        if total_tracks == 0:
+            print("⚠️ Playlist vacía.")
+            return
+
+        random_index = random.randint(0, total_tracks - 1)
+        sp.start_playback(context_uri=playlist_uri, offset={'position': random_index})
+        print(f"🎶 Reproduciendo canción aleatoria (posición {random_index}) en {playlist_uri}")
+    except Exception as e:
+        print(f"❌ Error al reproducir playlist aleatoria: {e}")
 
 def reproductor_autonomo():
     global ultimo_bpm, bpm_timestamp, estado_actual
@@ -65,9 +80,10 @@ def reproductor_autonomo():
 
                 if progreso >= duracion - 1000:
                     playlist_uri = playlist_uris[nuevo_estado]
-                    sp.start_playback(context_uri=playlist_uri)
+                    reproducir_playlist_aleatoria(sp, playlist_uri)
                     estado_actual = nuevo_estado
                     print(f"▶️ [Cambio de estado] a {nuevo_estado}: {playlist_uri}")
+
         except Exception as e:
             print(f"❌ Error en reproducción automática: {e}")
 

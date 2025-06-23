@@ -6,7 +6,7 @@ from auth import get_token_info
 
 playlist_uris = {
     "relajado": "spotify:playlist:2ObbFHzjAw5yucJ57MbqOn",
-    "normal":   "spotify:playlist:37i9dQZF1DWSoyxGghlqv5",
+    "normal":   "spotify:playlist:5HbYdtp5UcWgQoL4RIn4Nz",
     "agitado":  "spotify:playlist:37i9dQZF1EIgSjgoYBB2M6"
 }
 

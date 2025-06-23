@@ -56,16 +56,6 @@ def reproductor_autonomo():
         sp = Spotify(auth=token_info["access_token"])
 
         try:
-            current = sp.current_playback()
-            if not current:
-                time.sleep(2)
-                continue
-
-            if not current["is_playing"]:
-                print("⏸️ Música pausada manualmente. No se cambia playlist.")
-                time.sleep(5)
-                continue
-
             bpm = ultimo_bpm
             if bpm < 75:
                 nuevo_estado = "relajado"
@@ -75,14 +65,17 @@ def reproductor_autonomo():
                 nuevo_estado = "agitado"
 
             if nuevo_estado != estado_actual:
-                duracion = current["item"]["duration_ms"]
-                progreso = current["progress_ms"]
+                playlist_uri = playlist_uris[nuevo_estado]
 
-                if progreso >= duracion - 1000:
-                    playlist_uri = playlist_uris[nuevo_estado]
-                    reproducir_playlist_aleatoria(sp, playlist_uri)
-                    estado_actual = nuevo_estado
-                    print(f"▶️ [Cambio de estado] a {nuevo_estado}: {playlist_uri}")
+                # Si algo está sonando, lo pausamos antes de cambiar
+                current = sp.current_playback()
+                if current and current.get("is_playing"):
+                    sp.pause_playback()
+                    time.sleep(1)
+
+                reproducir_playlist_aleatoria(sp, playlist_uri)
+                estado_actual = nuevo_estado
+                print(f"▶️ [Cambio de estado] a {nuevo_estado}: {playlist_uri}")
 
         except Exception as e:
             print(f"❌ Error en reproducción automática: {e}")

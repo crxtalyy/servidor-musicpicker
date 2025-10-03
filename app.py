@@ -20,7 +20,7 @@ def login():
 @app.route("/callback")
 def callback():
     code = request.args.get("code")
-    token_info = sp_oauth.get_access_token(code)
+    token_info = sp_oauth.get_access_token(code, as_dict=True)
     set_token_info(token_info)
 
     sp = Spotify(auth=token_info['access_token'])

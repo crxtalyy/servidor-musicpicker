@@ -28,15 +28,13 @@ def recibir_bpm():
         # Revisar si ya se está reproduciendo algo
         current = sp.current_playback()
         ya_reproduciendo = False
+        song_name = None
         if current and current.get("is_playing") and current.get("item"):
             song_name = current["item"]["name"]
             ya_reproduciendo = True
-        else:
-            song_name = None  # Por ahora no conocemos la canción
 
         # Solo iniciar nueva playlist si no hay nada reproduciéndose
         if not ya_reproduciendo:
-            # Determinar estado y playlist
             if bpm < 75:
                 categoria = "relajado"
             elif bpm <= 110:
@@ -52,16 +50,16 @@ def recibir_bpm():
 
             sp.start_playback(context_uri=playlist_uris[categoria])
 
-            # Esperar hasta 2 segundos para que la API actualice la canción
-            timeout = 2.0
+            # Esperar hasta que la canción esté realmente disponible
+            timeout = 3.0
             waited = 0
             while waited < timeout:
                 current = sp.current_playback()
                 if current and current.get("is_playing") and current.get("item"):
                     song_name = current["item"]["name"]
                     break
-                time.sleep(0.2)
-                waited += 0.2
+                time.sleep(0.3)
+                waited += 0.3
 
             if not song_name:
                 song_name = "Desconocida"

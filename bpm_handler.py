@@ -2,7 +2,6 @@ from flask import Blueprint, request, jsonify
 from spotipy import Spotify
 from auth import get_token_info
 from auto_player import actualizar_bpm
-import time
 
 bpm_blueprint = Blueprint("bpm", __name__)
 
@@ -17,6 +16,7 @@ def recibir_bpm():
         if bpm <= 0:
             return jsonify({"error": "BPM inválido"}), 400
 
+        # Actualizamos BPM en auto_player (si lo usas para otra lógica)
         actualizar_bpm(bpm)
 
         token_info = get_token_info()
@@ -27,13 +27,14 @@ def recibir_bpm():
 
         # Revisar si ya se está reproduciendo algo
         current = sp.current_playback()
-        ya_reproduciendo = False
-        song_name = None
         if current and current.get("is_playing") and current.get("item"):
             song_name = current["item"]["name"]
             ya_reproduciendo = True
+        else:
+            song_name = None
+            ya_reproduciendo = False
 
-        # Solo iniciar nueva playlist si no hay nada reproduciéndose
+        # Solo iniciar nueva playlist si no hay reproducción
         if not ya_reproduciendo:
             if bpm < 75:
                 categoria = "relajado"
@@ -50,18 +51,11 @@ def recibir_bpm():
 
             sp.start_playback(context_uri=playlist_uris[categoria])
 
-            # Esperar hasta que la canción esté realmente disponible
-            timeout = 3.0
-            waited = 0
-            while waited < timeout:
-                current = sp.current_playback()
-                if current and current.get("is_playing") and current.get("item"):
-                    song_name = current["item"]["name"]
-                    break
-                time.sleep(0.3)
-                waited += 0.3
-
-            if not song_name:
+            # Obtenemos título de la canción actual
+            current = sp.current_playback()
+            if current and current.get("is_playing") and current.get("item"):
+                song_name = current["item"]["name"]
+            else:
                 song_name = "Desconocida"
 
         mensaje = f"BPM recibido: {bpm}"

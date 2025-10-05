@@ -24,12 +24,7 @@ def recibir_bpm():
 
         sp = Spotify(auth=token_info["access_token"])
 
-        current = sp.current_playback()
-        if current and current.get("is_playing"):
-            mensaje = "BPM recibido. Ya se está reproduciendo una canción."
-            print(f"🔄 {mensaje} (BPM: {bpm})")
-            return jsonify({"message": mensaje}), 200
-
+        # Determinar estado y playlist
         if bpm < 75:
             categoria = "relajado"
         elif bpm <= 110:
@@ -44,10 +39,18 @@ def recibir_bpm():
         }
 
         sp.start_playback(context_uri=playlist_uris[categoria])
-        mensaje = f"Reproduciendo playlist '{categoria}' para BPM {bpm}."
-        print(f"▶️ [Manual] {mensaje}")
 
-        return jsonify({"message": mensaje}), 200
+        # Obtener la canción actual
+        current = sp.current_playback()
+        if current and current.get("is_playing") and current.get("item"):
+            song_name = current["item"]["name"]
+        else:
+            song_name = "Desconocida"
+
+        mensaje = f"Reproduciendo playlist '{categoria}' para BPM {bpm}."
+        print(f"▶️ {mensaje} - Canción: {song_name}")
+
+        return jsonify({"message": mensaje, "cancion": song_name}), 200
 
     except Exception as e:
         print(f"❌ Error en /bpm: {e}")

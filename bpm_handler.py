@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from spotipy import Spotify
 from auth import get_token_info
 from auto_player import actualizar_bpm
+import time
 
 bpm_blueprint = Blueprint("bpm", __name__)
 
@@ -31,7 +32,7 @@ def recibir_bpm():
             song_name = current["item"]["name"]
             ya_reproduciendo = True
         else:
-            song_name = "Desconocida"
+            song_name = None  # Por ahora no conocemos la canción
 
         # Solo iniciar nueva playlist si no hay nada reproduciéndose
         if not ya_reproduciendo:
@@ -51,18 +52,28 @@ def recibir_bpm():
 
             sp.start_playback(context_uri=playlist_uris[categoria])
 
-            # Esperar un instante para que la API actualice la canción
-            time.sleep(0.5)
-            current = sp.current_playback()
-            if current and current.get("is_playing") and current.get("item"):
-                song_name = current["item"]["name"]
-            else:
+            # Esperar hasta 2 segundos para que la API actualice la canción
+            timeout = 2.0
+            waited = 0
+            while waited < timeout:
+                current = sp.current_playback()
+                if current and current.get("is_playing") and current.get("item"):
+                    song_name = current["item"]["name"]
+                    break
+                time.sleep(0.2)
+                waited += 0.2
+
+            if not song_name:
                 song_name = "Desconocida"
 
         mensaje = f"BPM recibido: {bpm}"
         print(f"▶️ {mensaje} - Canción: {song_name} (Ya reproduciendo: {ya_reproduciendo})")
 
-        return jsonify({"message": mensaje, "cancion": song_name, "ya_reproduciendo": ya_reproduciendo}), 200
+        return jsonify({
+            "message": mensaje,
+            "cancion": song_name,
+            "ya_reproduciendo": ya_reproduciendo
+        }), 200
 
     except Exception as e:
         print(f"❌ Error en /bpm: {e}")

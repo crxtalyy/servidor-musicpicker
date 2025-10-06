@@ -1,3 +1,4 @@
+"""
 import time
 import threading
 import random
@@ -96,3 +97,4 @@ def reproductor_autonomo():
 def iniciar_reproductor():
     hilo = threading.Thread(target=reproductor_autonomo, daemon=True)
     hilo.start()
+"""

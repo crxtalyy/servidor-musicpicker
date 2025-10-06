@@ -1,8 +1,10 @@
 import time
-import threading
 import random
+from flask import Blueprint, request, jsonify
 from spotipy import Spotify
 from auth import get_token_info
+
+bpm_blueprint = Blueprint("bpm", __name__)
 
 playlist_uris = {
     "relajado": "spotify:playlist:2ObbFHzjAw5yucJ57MbqOn",
@@ -10,89 +12,46 @@ playlist_uris = {
     "agitado":  "spotify:playlist:37i9dQZF1EIgSjgoYBB2M6"
 }
 
-ultimo_bpm = None
-bpm_timestamp = None
-estado_actual = None
+# --- Endpoint para recibir BPM desde la Raspberry ---
+@bpm_blueprint.route("/bpm", methods=["POST"])
+def recibir_bpm():
+    data = request.get_json()
+    if not data or "bpm" not in data:
+        return jsonify({"error": "Se requiere el valor 'bpm'"}), 400
 
-def actualizar_bpm(bpm):
-    global ultimo_bpm, bpm_timestamp
-    ultimo_bpm = bpm
-    bpm_timestamp = time.time()
-
-def reproducir_cancion_aleatoria(sp, playlist_uri):
     try:
+        bpm = int(data["bpm"])
+        if bpm < 75:
+            categoria = "relajado"
+        elif bpm <= 110:
+            categoria = "normal"
+        else:
+            categoria = "agitado"
+
+        token_info = get_token_info()
+        if not token_info:
+            return jsonify({"error": "Token inválido"}), 403
+
+        sp = Spotify(auth=token_info["access_token"])
+        playlist_uri = playlist_uris[categoria]
+
+        # Elegir canción aleatoria
         playlist = sp.playlist(playlist_uri)
         tracks = playlist["tracks"]["items"]
         total_tracks = len(tracks)
         if total_tracks == 0:
-            print("⚠️ Playlist vacía.")
-            return None
+            return jsonify({"error": "Playlist vacía"}), 500
 
         random_index = random.randint(0, total_tracks - 1)
         track = tracks[random_index]["track"]
         track_uri = track["uri"]
 
-        # Reproducir SOLO esta canción
         sp.start_playback(uris=[track_uri])
+        song_name = track["name"]
 
-        nombre = track["name"]
-        print(f"🎶 Reproduciendo una sola canción: {nombre}")
-        return nombre
+        print(f"▶️ BPM {bpm} → Estado: {categoria} → Canción: {song_name}")
+        return jsonify({"message": "BPM recibido", "cancion": song_name}), 200
+
     except Exception as e:
-        print(f"❌ Error al reproducir canción aleatoria: {e}")
-        return None
-
-def reproductor_autonomo():
-    global ultimo_bpm, bpm_timestamp, estado_actual
-
-    while True:
-        now = time.time()
-
-        if not ultimo_bpm or not bpm_timestamp:
-            time.sleep(2)
-            continue
-
-        if now - bpm_timestamp > 30:
-            print("⏳ Sin BPM recientes. Pausando análisis.")
-            time.sleep(2)
-            continue
-
-        token_info = get_token_info()
-        if not token_info:
-            time.sleep(2)
-            continue
-
-        sp = Spotify(auth=token_info["access_token"])
-
-        try:
-            bpm = ultimo_bpm
-            if bpm < 75:
-                nuevo_estado = "relajado"
-            elif bpm <= 110:
-                nuevo_estado = "normal"
-            else:
-                nuevo_estado = "agitado"
-
-            if nuevo_estado != estado_actual:
-                playlist_uri = playlist_uris[nuevo_estado]
-
-                # Si algo está sonando, lo pausamos antes de cambiar
-                current = sp.current_playback()
-                if current and current.get("is_playing"):
-                    sp.pause_playback()
-                    time.sleep(1)
-
-                song_name = reproducir_cancion_aleatoria(sp, playlist_uri)
-                estado_actual = nuevo_estado
-                print(f"▶️ [Cambio de estado] a {nuevo_estado}: {playlist_uri}")
-                if song_name:
-                    print(f"   → Canción: {song_name}")
-
-        except Exception as e:
-            print(f"❌ Error en reproducción automática: {e}")
-
-        time.sleep(5)
-
-def iniciar_reproductor():
-    hilo = threading.Thread(target=reproductor_autonomo, daemon=True)
-    hilo.start()
+        print(f"❌ Error en /bpm: {e}")
+        return jsonify({"error": str(e)}), 500

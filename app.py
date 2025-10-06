@@ -1,13 +1,12 @@
 from flask import Flask, redirect, request, render_template
 from auth import sp_oauth, set_token_info
-from bpm_handler import bpm_blueprint
-from auto_player import iniciar_reproductor
+from bpm_handler import iniciar_reproductor, actualizar_bpm  # solo lo que realmente usamos
 from spotipy import Spotify
 import os
 
 app = Flask(__name__)
-app.register_blueprint(bpm_blueprint)
 
+# ----- Rutas básicas -----
 @app.route("/")
 def home():
     return render_template("login.html")
@@ -29,7 +28,8 @@ def callback():
 
     return render_template("dashboard.html", user_id=user_id)
 
+# ----- Ejecutar la app -----
 if __name__ == "__main__":
-    iniciar_reproductor()
+    # Ya no necesitamos iniciar auto_player, el bpm_handler lo maneja
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)

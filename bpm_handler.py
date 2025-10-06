@@ -12,9 +12,16 @@ playlist_uris = {
     "agitado":  "spotify:playlist:37i9dQZF1EIgSjgoYBB2M6"
 }
 
+# --- Variables globales para controlar reproducción ---
+cancion_actual = None
+reproduciendo = False
+categoria_actual = None
+
 # --- Endpoint para recibir BPM desde la Raspberry ---
 @bpm_blueprint.route("/bpm", methods=["POST"])
 def recibir_bpm():
+    global cancion_actual, reproduciendo, categoria_actual
+
     data = request.get_json()
     if not data or "bpm" not in data:
         return jsonify({"error": "Se requiere el valor 'bpm'"}), 400
@@ -33,9 +40,19 @@ def recibir_bpm():
             return jsonify({"error": "Token inválido"}), 403
 
         sp = Spotify(auth=token_info["access_token"])
-        playlist_uri = playlist_uris[categoria]
+        
+        # Verificar si ya hay música reproduciéndose
+        if reproduciendo and categoria == categoria_actual:
+            # No cambiamos la canción, devolvemos la actual
+            print(f"🎵 BPM {bpm} → Estado: {categoria} → Canción actual sigue: {cancion_actual}")
+            return jsonify({
+                "message": "BPM recibido",
+                "cancion": cancion_actual,
+                "ya_reproduciendo": True
+            }), 200
 
-        # Elegir canción aleatoria
+        # Si no hay música o cambió la categoría, reproducir nueva canción
+        playlist_uri = playlist_uris[categoria]
         playlist = sp.playlist(playlist_uri)
         tracks = playlist["tracks"]["items"]
         total_tracks = len(tracks)
@@ -46,20 +63,22 @@ def recibir_bpm():
         track = tracks[random_index]["track"]
         track_uri = track["uri"]
 
-        # Iniciar reproducción de la canción seleccionada
         sp.start_playback(uris=[track_uri])
-        song_name = track["name"]
+        cancion_actual = track["name"]
+        categoria_actual = categoria
+        reproduciendo = True
 
-        # Asumimos que la canción ya está reproduciéndose
-        ya_reproduciendo = True
-
-        print(f"▶️ BPM {bpm} → Estado: {categoria} → Canción: {song_name}")
+        print(f"▶️ BPM {bpm} → Estado: {categoria} → Nueva canción: {cancion_actual}")
         return jsonify({
             "message": "BPM recibido",
-            "cancion": song_name,
-            "ya_reproduciendo": ya_reproduciendo
+            "cancion": cancion_actual,
+            "ya_reproduciendo": True
         }), 200
 
     except Exception as e:
         print(f"❌ Error en /bpm: {e}")
+        # Si falla la reproducción, marcamos que no hay música
+        reproduciendo = False
+        cancion_actual = None
+        categoria_actual = None
         return jsonify({"error": str(e)}), 500

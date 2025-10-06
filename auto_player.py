@@ -19,19 +19,28 @@ def actualizar_bpm(bpm):
     ultimo_bpm = bpm
     bpm_timestamp = time.time()
 
-def reproducir_playlist_aleatoria(sp, playlist_uri):
+def reproducir_cancion_aleatoria(sp, playlist_uri):
     try:
         playlist = sp.playlist(playlist_uri)
-        total_tracks = playlist['tracks']['total']
+        tracks = playlist["tracks"]["items"]
+        total_tracks = len(tracks)
         if total_tracks == 0:
             print("⚠️ Playlist vacía.")
-            return
+            return None
 
         random_index = random.randint(0, total_tracks - 1)
-        sp.start_playback(context_uri=playlist_uri, offset={'position': random_index})
-        print(f"🎶 Reproduciendo canción aleatoria (posición {random_index}) en {playlist_uri}")
+        track = tracks[random_index]["track"]
+        track_uri = track["uri"]
+
+        # Reproducir SOLO esta canción
+        sp.start_playback(uris=[track_uri])
+
+        nombre = track["name"]
+        print(f"🎶 Reproduciendo una sola canción: {nombre}")
+        return nombre
     except Exception as e:
-        print(f"❌ Error al reproducir playlist aleatoria: {e}")
+        print(f"❌ Error al reproducir canción aleatoria: {e}")
+        return None
 
 def reproductor_autonomo():
     global ultimo_bpm, bpm_timestamp, estado_actual
@@ -73,9 +82,11 @@ def reproductor_autonomo():
                     sp.pause_playback()
                     time.sleep(1)
 
-                reproducir_playlist_aleatoria(sp, playlist_uri)
+                song_name = reproducir_cancion_aleatoria(sp, playlist_uri)
                 estado_actual = nuevo_estado
                 print(f"▶️ [Cambio de estado] a {nuevo_estado}: {playlist_uri}")
+                if song_name:
+                    print(f"   → Canción: {song_name}")
 
         except Exception as e:
             print(f"❌ Error en reproducción automática: {e}")

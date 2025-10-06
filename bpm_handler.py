@@ -1,80 +1,98 @@
-from flask import Blueprint, request, jsonify
+import time
+import threading
+import random
 from spotipy import Spotify
 from auth import get_token_info
-from auto_player import actualizar_bpm
-import time
 
-bpm_blueprint = Blueprint("bpm", __name__)
+playlist_uris = {
+    "relajado": "spotify:playlist:2ObbFHzjAw5yucJ57MbqOn",
+    "normal":   "spotify:playlist:5HbYdtp5UcWgQoL4RIn4Nz",
+    "agitado":  "spotify:playlist:37i9dQZF1EIgSjgoYBB2M6"
+}
 
-@bpm_blueprint.route("/bpm", methods=["POST"])
-def recibir_bpm():
-    data = request.get_json()
-    if not data or "bpm" not in data:
-        return jsonify({"error": "Se requiere el valor 'bpm'"}), 400
+ultimo_bpm = None
+bpm_timestamp = None
+estado_actual = None
 
+def actualizar_bpm(bpm):
+    global ultimo_bpm, bpm_timestamp
+    ultimo_bpm = bpm
+    bpm_timestamp = time.time()
+
+def reproducir_cancion_aleatoria(sp, playlist_uri):
     try:
-        bpm = int(data.get("bpm"))
-        if bpm <= 0:
-            return jsonify({"error": "BPM inválido"}), 400
+        playlist = sp.playlist(playlist_uri)
+        tracks = playlist["tracks"]["items"]
+        total_tracks = len(tracks)
+        if total_tracks == 0:
+            print("⚠️ Playlist vacía.")
+            return None
 
-        actualizar_bpm(bpm)
+        random_index = random.randint(0, total_tracks - 1)
+        track = tracks[random_index]["track"]
+        track_uri = track["uri"]
+
+        # Reproducir SOLO esta canción
+        sp.start_playback(uris=[track_uri])
+
+        nombre = track["name"]
+        print(f"🎶 Reproduciendo una sola canción: {nombre}")
+        return nombre
+    except Exception as e:
+        print(f"❌ Error al reproducir canción aleatoria: {e}")
+        return None
+
+def reproductor_autonomo():
+    global ultimo_bpm, bpm_timestamp, estado_actual
+
+    while True:
+        now = time.time()
+
+        if not ultimo_bpm or not bpm_timestamp:
+            time.sleep(2)
+            continue
+
+        if now - bpm_timestamp > 30:
+            print("⏳ Sin BPM recientes. Pausando análisis.")
+            time.sleep(2)
+            continue
 
         token_info = get_token_info()
         if not token_info:
-            return jsonify({"error": "Token inválido"}), 403
+            time.sleep(2)
+            continue
 
         sp = Spotify(auth=token_info["access_token"])
 
-        # Revisar si ya se está reproduciendo algo
-        current = sp.current_playback()
-        ya_reproduciendo = False
-        if current and current.get("is_playing") and current.get("item"):
-            song_name = current["item"]["name"]
-            ya_reproduciendo = True
-        else:
-            song_name = None  # Por ahora no conocemos la canción
-
-        # Solo iniciar nueva playlist si no hay nada reproduciéndose
-        if not ya_reproduciendo:
-            # Determinar estado y playlist
+        try:
+            bpm = ultimo_bpm
             if bpm < 75:
-                categoria = "relajado"
+                nuevo_estado = "relajado"
             elif bpm <= 110:
-                categoria = "normal"
+                nuevo_estado = "normal"
             else:
-                categoria = "agitado"
+                nuevo_estado = "agitado"
 
-            playlist_uris = {
-                "relajado": "spotify:playlist:2ObbFHzjAw5yucJ57MbqOn",
-                "normal":   "spotify:playlist:37i9dQZF1DWSoyxGghlqv5",
-                "agitado":  "spotify:playlist:37i9dQZF1EIgSjgoYBB2M6"
-            }
+            if nuevo_estado != estado_actual:
+                playlist_uri = playlist_uris[nuevo_estado]
 
-            sp.start_playback(context_uri=playlist_uris[categoria])
-
-            # Esperar hasta 2 segundos para que la API actualice la canción
-            timeout = 2.0
-            waited = 0
-            while waited < timeout:
+                # Si algo está sonando, lo pausamos antes de cambiar
                 current = sp.current_playback()
-                if current and current.get("is_playing") and current.get("item"):
-                    song_name = current["item"]["name"]
-                    break
-                time.sleep(0.2)
-                waited += 0.2
+                if current and current.get("is_playing"):
+                    sp.pause_playback()
+                    time.sleep(1)
 
-            if not song_name:
-                song_name = "Desconocida"
+                song_name = reproducir_cancion_aleatoria(sp, playlist_uri)
+                estado_actual = nuevo_estado
+                print(f"▶️ [Cambio de estado] a {nuevo_estado}: {playlist_uri}")
+                if song_name:
+                    print(f"   → Canción: {song_name}")
 
-        mensaje = f"BPM recibido: {bpm}"
-        print(f"▶️ {mensaje} - Canción: {song_name} (Ya reproduciendo: {ya_reproduciendo})")
+        except Exception as e:
+            print(f"❌ Error en reproducción automática: {e}")
 
-        return jsonify({
-            "message": mensaje,
-            "cancion": song_name,
-            "ya_reproduciendo": ya_reproduciendo
-        }), 200
+        time.sleep(5)
 
-    except Exception as e:
-        print(f"❌ Error en /bpm: {e}")
-        return jsonify({"error": str(e)}), 500
+def iniciar_reproductor():
+    hilo = threading.Thread(target=reproductor_autonomo, daemon=True)
+    hilo.start()

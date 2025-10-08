@@ -7,7 +7,7 @@ bpm_blueprint = Blueprint("bpm", __name__)
 
 playlist_uris = {
     "relajado": "spotify:playlist:2ObbFHzjAw5yucJ57MbqOn",
-    "normal":   "spotify:playlist:5HbYdtp5UcWgQoL4RIn4Nz",
+    "normal":   "spotify:playlist:3Lqw8YaDSWQRTkiIejggVT",
     "agitado":  "spotify:playlist:37i9dQZF1EIgSjgoYBB2M6"
 }
 

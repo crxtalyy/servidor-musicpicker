@@ -7,8 +7,8 @@ bpm_blueprint = Blueprint("bpm", __name__)
 
 playlist_uris = {
     "relajado": "spotify:playlist:2ObbFHzjAw5yucJ57MbqOn",
-    "normal":   "spotify:playlist:37i9dQZF1DWSoyxGghlqv5",
-    "agitado":  "spotify:playlist:37i9dQZF1EIgSjgoYBB2M6"
+    "normal":   "spotify:playlist:3Lqw8YaDSWQRTkiIejggVT",
+    "agitado":  "spotify:playlist:3Lqw8YaDSWQRTkiIejggVT"
 }
 
 # Endpoint para recibir BPM y reproducir canción
